@@ -1,0 +1,54 @@
+[project]
+name = "tmp_python_service"
+version = "0.2.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = []
+
+[project.optional-dependencies]
+core = [
+    "aiohttp>=3.13.3",
+    "litellm>=1.81.11",
+    "loguru>=0.7.3",
+    "opentelemetry-exporter-otlp>=1.40.0",
+    "opentelemetry-sdk>=1.40.0",
+    "pydantic>=2.12.4",
+]
+
+[dependency-groups]
+dev = [
+    "tmp_python_service[core]",
+    "ruff>=0.14.6",
+    "pytest>=9.0.1",
+    "pyright>=1.1.407",
+]
+
+[tool.uv.workspace]
+members = [
+    "src/core",
+    "src/chat"
+]
+
+[tool.uv.sources]
+core = { workspace = true }
+chat = { workspace = true }
+
+[tool.uv]
+package = true
+
+[project.scripts]
+serve = "core.main:main"
+
+[tool.pytest.ini_options]
+markers = []
+testpaths = ["tests", "src"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "--strict-markers",
+    "--strict-config",
+    "-v",
+]
+asyncio_mode = "auto"
