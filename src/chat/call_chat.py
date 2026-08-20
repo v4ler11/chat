@@ -1,20 +1,18 @@
 import asyncio
 import random
-from typing import Type, TypeVar, Tuple, Optional
+from typing import List, Type, TypeVar, Tuple, Optional
 
 import litellm
 
 from litellm import ModelResponse
 from litellm.types.utils import Choices, Usage
-from opentelemetry import trace
 from pydantic import BaseModel
-from loguru import logger
 
 from chat.parse_model_output import get_schema, parse_model_output_json
+from chat.tools.abstract import Tool
 from chat.tools.context import ToolContext
 from chat.tools.tools import execute_tools
-from chat.types import ChatPost, ChatMessageAssistant, ToolCall
-from core.traces import traced_operation_async
+from chat.types import ChatPost, ChatMessage, ChatMessageAssistant, ToolCall
 
 
 T = TypeVar("T", bound=BaseModel)
@@ -51,12 +49,9 @@ class ChatUsage(BaseModel):
                 setattr(self, field, (getattr(self, field) or 0) + value)
 
 
-@traced_operation_async(kind=trace.SpanKind.CLIENT)
 async def chat_completion_not_stream(
         post: ChatPost,
 ) -> Tuple[ModelResponse, ChatUsage]:
-    root_span = trace.get_current_span()
-
     payload = post.model_dump(exclude_none=True, exclude={"messages", "model", "stream"})
 
     if post.model_extra:
@@ -90,27 +85,22 @@ async def chat_completion_not_stream(
         completion_cost=cost_details.get("upstream_inference_completions_cost"),
     )
 
-    root_span.set_attributes(chat_usage.model_dump(exclude_none=True))
-
     return response, chat_usage
 
 
-@traced_operation_async()
 async def chat_completion_not_stream_with_tools(
         ctx: ToolContext,
         post: ChatPost,
+        tools: List[Tool],
         response_model: Optional[Type[T]] = None,
-) -> Tuple[ModelResponse | T | None, ChatUsage]:
-    root_span = trace.get_current_span()
-
+        max_depth: int = 10,
+) -> Tuple[ModelResponse | T | None, ChatUsage, List[ChatMessage]]:
     usage_acc = ChatUsage(model=post.model)
-    tool_calls_stats = {}
     post_copy = post.model_copy()
     messages = post.messages
     structured_response: Optional[T] = None
 
     depth = 0
-    max_depth = 10
     while True:
         depth += 1
         if depth >= max_depth and post_copy.tools is not None:
@@ -134,37 +124,22 @@ async def chat_completion_not_stream_with_tools(
         ]
 
         if tool_calls:
-            for t in tool_calls:
-                tool_calls_stats.setdefault(t.function.name, 0)
-                tool_calls_stats[t.function.name] += 1
-
             response_msg = ChatMessageAssistant(
                 content=message.content,
                 tool_calls=tool_calls,
             )
             messages.append(response_msg)
-            messages.extend(await execute_tools(ctx, messages))
+            messages.extend(await execute_tools(ctx, tools, messages))
             continue
 
-        root_span.set_attributes({
-            **usage_acc.model_dump(exclude_none=True),
-            **{
-                f"tools.call.{k}.cnt": v
-                for k, v in tool_calls_stats.items()
-            },
-            "result.depth": depth,
-            "result.message_cnt": len(post_copy.messages),
-        })
-
         if structured_response is not None:
-            return structured_response, usage_acc
+            return structured_response, usage_acc, messages
 
-        return raw_response, usage_acc
+        return raw_response, usage_acc, messages
 
     raise RuntimeError("unreachable")
 
 
-@traced_operation_async()
 async def chat_completion_not_stream_structured(
         post: ChatPost,
         response_model: Type[T],
@@ -172,8 +147,6 @@ async def chat_completion_not_stream_structured(
         max_retries: int = 2,
         backoff_base: float = 1.5,
 ) -> Tuple[Optional[T], ModelResponse, ChatUsage]:
-    root_span = trace.get_current_span()
-
     usage_acc = ChatUsage(model=post.model)
 
     post_copy = post.model_copy()
@@ -190,11 +163,6 @@ async def chat_completion_not_stream_structured(
             content = choices[0].message.content
             structured_response = parse_model_output_json(content, response_model) if content else None
 
-            root_span.set_attributes({
-                **usage_acc.model_dump(exclude_none=True),
-                "result.attempts_cnt": attempt + 1
-            })
-
             return structured_response, raw_response, usage_acc
 
         except Exception as e:
@@ -202,9 +170,7 @@ async def chat_completion_not_stream_structured(
             if attempt == max_retries:
                 break
             delay = (backoff_base ** attempt) + random.uniform(0, 0.5)
-            logger.info(f"--> [Retry {attempt + 1}] Failed: {str(e)[:60]}... (Waiting {delay:.2f}s)")
             await asyncio.sleep(delay)
 
-    logger.info(f"Exhausted {max_retries} retries.")
     assert last_error is not None
     raise last_error

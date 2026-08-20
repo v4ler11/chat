@@ -1,44 +1,30 @@
 [project]
-name = "tmp_python_service"
-version = "0.2.0"
-description = "Add your description here"
+name = "chat"
+version = "0.1.0"
+description = "Typed LLM chat client library with tool-calling support"
 readme = "README.md"
 requires-python = ">=3.12"
-dependencies = []
-
-[project.optional-dependencies]
-core = [
+dependencies = [
     "aiohttp>=3.13.3",
     "litellm>=1.81.11",
-    "loguru>=0.7.3",
-    "opentelemetry-exporter-otlp>=1.40.0",
-    "opentelemetry-sdk>=1.40.0",
     "pydantic>=2.12.4",
 ]
 
 [dependency-groups]
 dev = [
-    "tmp_python_service[core]",
+    "chat",
     "ruff>=0.14.6",
     "pytest>=9.0.1",
+    "pytest-asyncio>=1.2.0",
     "pyright>=1.1.407",
 ]
 
-[tool.uv.workspace]
-members = [
-    "src/core",
-    "src/chat"
-]
-
-[tool.uv.sources]
-core = { workspace = true }
-chat = { workspace = true }
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
 [tool.uv]
 package = true
-
-[project.scripts]
-serve = "core.main:main"
 
 [tool.pytest.ini_options]
 markers = []

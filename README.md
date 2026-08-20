@@ -1,92 +1,123 @@
-## tmp-python-service
+## chat
 
-# Usage
+Typed LLM chat client library with tool-calling and structured-output support, built on [litellm](https://github.com/BerriAI/litellm).
 
-1. Clone the repository
-```shell
-git clone https://git.valerii.casa/valerii/tmp-python-service.git
-cd tmp-python-service
-```
+## Install
 
-## Baremetal
-
-2. Install [uv](https://github.com/astral-sh/uv)
 ```sh
-curl -LsSf https://astral.sh/uv/install.sh | sh
-uv --version
+uv add ssh://git@ssh.git.valerii.casa/valerii/chat.git
 ```
 
-3. Install package & deps
-```sh
-uv venv
-uv sync --extra core
+## Usage
+
+`ChatPost` carries the request. The model endpoint is resolved by litellm from the `model` string (e.g. `"gpt-4o"` → OpenAI, `"ollama/llama3"` → local Ollama); to point at a custom or self-hosted endpoint, pass `api_base` (and `api_key` if the endpoint requires it) — both are forwarded straight to litellm:
+
+```python
+import asyncio
+
+from chat import ChatPost, ChatMessageUser, chat_completion_not_stream
+
+
+async def main():
+    post = ChatPost(
+        model="openai/model-name",          # litellm provider prefix
+        messages=[ChatMessageUser(content="Hello")],
+        api_base="http://localhost:95255/v1",  # endpoint override
+        api_key="sk-...",                      # auth for that endpoint
+    )
+    response, usage = await chat_completion_not_stream(post)
+    print(response.choices[0].message.content)
+    print(usage.model_dump())
+
+
+asyncio.run(main())
 ```
 
-4. Run the Service
-```sh
-uv run core
+Any other litellm `acompletion` kwarg can be passed as an extra field (`ChatPost` allows extras) and is forwarded as-is.
+
+### Structured output
+
+Enforce a Pydantic response schema (with retries):
+
+```python
+from pydantic import BaseModel
+
+from chat import ChatPost, ChatMessageUser, chat_completion_not_stream_structured
+
+
+class Response(BaseModel):
+    answer: str
+
+
+async def main():
+    post = ChatPost(
+        model="gpt-4o",
+        messages=[ChatMessageUser(content="What is 2+2?")],
+    )
+    parsed, response, usage = await chat_completion_not_stream_structured(post, Response)
+    print(parsed.answer)
 ```
 
-## Docker
+### Tool calling
 
-2. Ensure you have docker, docker compose installed
-```sh
-docker --version && docker compose version
+Subclass `Tool` and pass your own list of instances:
+
+```python
+import aiohttp
+
+from chat import (
+    ChatPost,
+    ChatMessageUser,
+    Tool,
+    ToolCall,
+    ToolContext,
+    ToolProps,
+    chat_completion_not_stream_with_tools,
+)
+
+
+class EchoTool(Tool):
+    @property
+    def name(self) -> str:
+        return "echo"
+
+    def props(self) -> ToolProps:
+        return ToolProps(tool_name=self.name)
+
+    def into_chat_tool(self):
+        return ...  # ChatTool description/schema
+
+    def validate_tool_call_args(self, ctx, tool_call, args):
+        return True, []
+
+    async def execute(self, ctx, tool_call, args):
+        return True, []  # ChatMessageTool results
+
+
+TOOLS = [EchoTool()]
+
+
+async def main():
+    async with aiohttp.ClientSession() as session:
+        ctx = ToolContext(session=session)
+        post = ChatPost(
+            model="gpt-4o",
+            messages=[ChatMessageUser(content="Please echo!")],
+            tools=[t.into_chat_tool() for t in TOOLS],
+            tool_choice="auto",
+        )
+        response, usage, history = await chat_completion_not_stream_with_tools(
+            ctx, post, TOOLS, max_depth=10,
+        )
+        print(response.choices[0].message.content)
+        # `history` is the full message list: user + assistant tool calls + tool results
+        assert history[-1].content == response.choices[0].message.content
 ```
-Help: consult [How to install docker, docker compose, ctk](assets/docs/docker-docker-compose-ctl.md)
 
-3. Build an Image and start container
-```sh
-docker compose up -d
-```
+## Development
 
-# Development
-
-1. Install the package as in baremetal section
-2. Switch to development profile
 ```sh
 uv sync --dev
-```
-
-### Adding/ Removing packages
-```sh
-uv add requests --optional core
-uv remove request --optional core
-```
-or adding to a group e.g., development
-```sh
-uv add requests --dev
-uv remove requests --dev
-```
-
-### Upgrading a version
-1. Bump up version in `pyproject.toml`
-2. Execute
-```sh
-git tag v0.1.4
-git push origin v0.1.4
-```
-Note: GH actions will automatically create and publish an image based on the tag
-
-### Development tools
-
-#### Pyright -- Static Type Checker
-```sh
 uv run pyright
-```
-
-#### Testing
-Run all the tests
-```sh
 uv run pytest
-```
-
-Show all testing markers 
-```sh
-uv run pytest --markers | head -1
-```
-
-Run tests assigned to a marker
-```sh
-uv run pytest -m "marker"
 ```

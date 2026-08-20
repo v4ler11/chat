@@ -126,6 +126,15 @@ class ChatPost(BaseModel):
     messages: List[ChatMessage]
     stream: bool = False
 
+    api_base: Optional[str] = Field(
+        default=None,
+        description="Base URL of the model endpoint; overrides the provider default resolved from `model`.",
+    )
+    api_key: Optional[str] = Field(
+        default=None,
+        description="API key used to authenticate against the endpoint.",
+    )
+
     modalities: List[Literal["text", "audio"]] = Field(default=["text"])
     audio: Optional[Any] = None
 
