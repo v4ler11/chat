@@ -129,7 +129,21 @@ async def chat_completion_not_stream_with_tools(
                 tool_calls=tool_calls,
             )
             messages.append(response_msg)
-            messages.extend(await execute_tools(ctx, tools, messages))
+            tool_results = await execute_tools(ctx, tools, messages)
+            messages.extend(tool_results)
+
+            # If the executor answered nothing, `messages` now ends with an
+            # assistant turn. Sending that to the API would 400 on Google AI
+            # Studio ("Requests ending with a model turn are not supported"),
+            # so stop instead of looping into it.
+            if not tool_results:
+                return raw_response, usage_acc, messages
+
+            # Hard cap: once max_depth cleared the tool schema, the model must
+            # not ask for more; if it still did, stop rather than loop forever.
+            if depth >= max_depth and not post_copy.tools:
+                return raw_response, usage_acc, messages
+
             continue
 
         if structured_response is not None:

@@ -19,6 +19,15 @@ async def execute_tools(
     for tool_call in get_unanswered_tool_calls(messages):
         tool = next((t for t in tools if t.name == tool_call.function.name), None)
         if not tool:
+            # The model asked for a tool that is not declared to us. Every
+            # unanswered assistant tool call must still get a tool/reply, or the
+            # transcript ends on a model turn and Gemini (Google AI Studio)
+            # rejects the next request ("Requests ending with a model turn are
+            # not supported"). Reply so the model can recover.
+            tool_res_messages.append(ChatMessageTool(
+                content=f"Unknown tool '{tool_call.function.name}': no such tool is available in this session.",
+                tool_call_id=tool_call.id,
+            ))
             continue
 
         try:
