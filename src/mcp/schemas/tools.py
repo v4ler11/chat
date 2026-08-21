@@ -79,6 +79,7 @@ class MCPToolDefinition(BaseModel):
                 description=prop.get("description", ""),
                 format=prop.get("format"),
                 enum=prop.get("enum"),
+                items=prop.get("items"),
             )
 
         parameters = ChatToolParameters(

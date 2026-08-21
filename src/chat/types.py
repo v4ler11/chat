@@ -19,9 +19,12 @@ class ToolCall(BaseModel):
 
 class ChatToolParameterProperty(BaseModel):
     type: str
-    description: str
+    description: str = ""
     format: Optional[str] = None
     enum: Optional[List[str]] = None
+    items: Optional["ChatToolParameterProperty"] = None
+    properties: Optional[Dict[str, "ChatToolParameterProperty"]] = None
+    required: Optional[List[str]] = None
 
 
 class ChatToolParameters(BaseModel):
