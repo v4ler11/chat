@@ -11,3 +11,10 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["."]
+
+# The package is flat at this pyproject's directory (src/mcp), and uv builds
+# this subdir as its project root. Remap the build root into the `mcp`
+# package namespace so the wheel ships a real ``mcp`` package rather than
+# loose top-level modules.
+[tool.hatch.build.targets.wheel.sources]
+"" = "mcp/"
