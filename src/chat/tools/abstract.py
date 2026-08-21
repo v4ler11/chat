@@ -1,14 +1,7 @@
-from typing import List, Dict, Any, Optional, Tuple
-from pydantic import BaseModel
+from typing import List, Dict, Any, Tuple
 
 from chat.tools.context import ToolContext
 from chat.types import ToolCall, ChatMessage, ChatTool
-
-
-class ToolProps(BaseModel):
-    tool_name: str
-    system_prompt: Optional[str] = None
-    depends_on: Optional[List[str]] = None
 
 
 class Tool:
@@ -34,6 +27,3 @@ class Tool:
 
     def into_chat_tool(self) -> ChatTool:
         raise NotImplementedError(f"method 'into_chat_tool' is not implemented for tool {self.name}")
-
-    def props(self) -> ToolProps:
-        raise NotImplementedError(f"method 'props' is not implemented for tool {self.name}")

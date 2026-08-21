@@ -34,7 +34,7 @@ class ChatToolParameters(BaseModel):
 class ChatToolFunction(BaseModel):
     name: str
     description: Optional[str] = None
-    strict: bool = True
+    strict: bool = False
     parameters: ChatToolParameters
 
 

@@ -5,7 +5,7 @@ from chat.call_chat import (
     chat_completion_not_stream_with_tools,
 )
 from chat.parse_model_output import parse_model_output_json
-from chat.tools.abstract import Tool, ToolProps
+from chat.tools.abstract import Tool
 from chat.tools.context import ToolContext
 from chat.tools.tools import execute_tools
 from chat.types import (
@@ -52,7 +52,6 @@ __all__ = [
     "Tool",
     "ToolCall",
     "ToolContext",
-    "ToolProps",
     "chat_completion_not_stream",
     "chat_completion_not_stream_structured",
     "chat_completion_not_stream_with_tools",
