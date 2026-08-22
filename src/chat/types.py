@@ -71,6 +71,9 @@ class ChatMessageSystem(ChatMessageBase):
     content: str
 
 
+ChatMessageUserContent = Union[str, List[Union[ChatContentPartText, ChatContentPartImage]]]
+
+
 class ChatMessageUser(ChatMessageBase):
     role: Literal["user"] = "user"
     content: Union[str, List[Union[ChatContentPartText, ChatContentPartImage]]]
