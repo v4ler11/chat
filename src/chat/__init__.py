@@ -10,12 +10,16 @@ from chat.tools.context import ToolContext
 from chat.tools.tools import execute_tools
 from chat.types import (
     ChatCompletionResponse,
+    ChatContentPartImage,
+    ChatContentPartText,
     ChatDelta,
+    ChatImageUrl,
     ChatMessage,
     ChatMessageAssistant,
     ChatMessageSystem,
     ChatMessageTool,
     ChatMessageUser,
+    ChatMessageUserContent,
     ChatPost,
     ChatTemplatesKwargs,
     ChatTool,
@@ -32,12 +36,16 @@ from chat.types import (
 
 __all__ = [
     "ChatCompletionResponse",
+    "ChatContentPartImage",
+    "ChatContentPartText",
     "ChatDelta",
+    "ChatImageUrl",
     "ChatMessage",
     "ChatMessageAssistant",
     "ChatMessageSystem",
     "ChatMessageTool",
     "ChatMessageUser",
+    "ChatMessageUserContent",
     "ChatPost",
     "ChatTemplatesKwargs",
     "ChatTool",

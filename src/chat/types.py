@@ -51,6 +51,21 @@ class ChatMessageBase(BaseModel):
     content: Any | None
 
 
+class ChatImageUrl(BaseModel):
+    url: str # example: data:image/jpeg;base64,{base64_image} or url
+    detail: Optional[Literal["low", "high", "original", "auto"]] = None
+
+
+class ChatContentPartText(BaseModel):
+    type: Literal["text"] = "text"
+    text: str
+
+
+class ChatContentPartImage(BaseModel):
+    type: Literal["image_url"] = "image_url"
+    image_url: ChatImageUrl
+
+
 class ChatMessageSystem(ChatMessageBase):
     role: Literal["system"] = "system"
     content: str
@@ -58,7 +73,7 @@ class ChatMessageSystem(ChatMessageBase):
 
 class ChatMessageUser(ChatMessageBase):
     role: Literal["user"] = "user"
-    content: str
+    content: Union[str, List[Union[ChatContentPartText, ChatContentPartImage]]]
 
 
 class ChatMessageTool(ChatMessageBase):
