@@ -28,6 +28,9 @@ build-backend = "hatchling.build"
 [tool.uv]
 package = true
 
+[tool.hatch.build.targets.wheel]
+packages = ["src/chat", "src/mcp"]
+
 [tool.pytest.ini_options]
 markers = []
 testpaths = ["tests", "src"]
